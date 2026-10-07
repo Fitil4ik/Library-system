@@ -5,3 +5,4 @@ DEFENSE — Завдання 1: Домен і модель даних (ER)
 Топ-3 розбіжності: 
 1. У коміті "added status field to Book entity" ШІ вказав status як string, в наступному коміті "enforce enum for Book status" виправлено через зміни в spec.md.
 2. При першій генерації ШІ створив зв'язок між книгами та авторами як нуль або багато, що дозволяло існування книг без авторів, виправлено в коміті "update spec to require at least one author per book" через зміни в spec.md.
+3. У коміті "added fine field to Loan entity" ШІ вказав fine_amount як number, в наступному коміті "enforce decimal for Loan fine_amount" виправлено через змінив spec.md.
