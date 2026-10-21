@@ -1,0 +1,28 @@
+erDiagram
+    Reader {
+        uuid id PK
+        string email
+        string full_name
+    }
+    Author {
+        uuid id PK
+        string full_name
+    }
+    Book {
+        uuid id PK
+        string title
+        number publication_year
+        enum status
+    }
+    Loan {
+        uuid id PK
+        uuid reader_id FK
+        uuid book_id FK
+        date borrow_date
+        date return_date
+        decimal fine_amount
+    }
+
+    Reader ||--o{ Loan : "makes"
+    Book ||--o{ Loan : "included in"
+    Book }|--|{ Author : "written by"
