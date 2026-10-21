@@ -1,12 +1,12 @@
 # Вимоги у синтаксисі EARS
 
-REQ-1: Коли Читач ініціює процес видачі книги (When), і статус книги дорівнює AVAILABLE (If), Система повинна створити запис Loan зі збереженням borrow_date та змінити статус книги на LOANED.
+REQ-1: When a Reader requests to borrow a Book, while the Book status is AVAILABLE, the System shall create a Loan record and set the Book status to LOANED.
 
-REQ-2: Коли запис Loan успішно створено або закрито (When), Система повинна викликати EmailService для відправки відповідного сповіщення на email Читача.
+REQ-2: When a Loan record is created or closed, the System shall trigger the EmailService to send a notification to the Reader.
 
-REQ-3: Якщо Читач повертає книгу (If), і поточна дата перевищує return_date, Система повинна розрахувати fine_amount у сутності Loan.
+REQ-3: If a Reader returns a Book after the return_date, then the System shall calculate the fine_amount for the Loan.
 
-REQ-4: У випадку, коли fine_amount для Loan більше нуля (Where), Система повинна ініціювати процес оплати через PaymentGateway.
+REQ-4: While a Loan has a fine_amount greater than zero, the System shall initiate the payment process via the PaymentGateway.
 
 # User stories
 
