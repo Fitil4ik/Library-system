@@ -8,6 +8,8 @@ REQ-3: If a Reader returns a Book after the return_date, then the System shall c
 
 REQ-4: While a Loan has a fine_amount greater than zero, the System shall initiate the payment process via the PaymentGateway.
 
+REQ-5: When a Reader reports a Book as lost, the System shall set the Book status to LOST and calculate the replacement fine_amount.
+
 # User stories
 
 US-1: Як Читач, я хочу перевіряти статус книги перед видачею, щоб переконатися, що вона доступна (AVAILABLE).
@@ -42,3 +44,4 @@ And Система оновлює статус книги після завер�
 | REQ-2 | UC_Borrow, UC_Return, UC_Notify | US-2 | Сценарій 1 |
 | REQ-3 | UC_Return | US-3 | Сценарій 2 |
 | REQ-4 | UC_Return, UC_PayFine | US-3 | Сценарій 2 |
+| REQ-5 | Не покрито | Не покрито | Не покрито |
