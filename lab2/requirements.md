@@ -41,10 +41,10 @@ And Система оновлює запис Loan як оплачений та �
 
 # Матриця трасування
 
-| Вимога | Прецеденти (Use Cases) | Користувацька історія | Gherkin сценарій |
+| Вимога | Прецеденти (Use Cases) | Користувацькі історії (US) | Gherkin сценарії |
 | --- | --- | --- | --- |
-| REQ-1 | UC_Borrow, UC_CheckStatus | US-1 | Сценарій 1 |
-| REQ-2 | UC_Borrow, UC_Return, UC_Notify | US-2 | Сценарій 1 |
-| REQ-3 | UC_Return | US-3 | Сценарій 2 |
-| REQ-4 | UC_Return, UC_PayFine | US-3 | Сценарій 2 |
-| REQ-5 | Не покрито | Не покрито | Не покрито |
+| **REQ-1** (Створення Loan) | UC_Borrow, UC_CheckStatus | US-1, US-2 | Сценарій 1 |
+| **REQ-2** (Сповіщення) | UC_Borrow, UC_Return, UC_Notify, UC_PayFine | US-1, US-2, US-3 | Сценарій 1, Сценарій 2 |
+| **REQ-3** (Розрахунок штрафу) | UC_Return, UC_CheckStatus | US-2, US-3 | Сценарій 2 |
+| **REQ-4** (Оплата штрафу) | UC_Return, UC_PayFine, UC_Notify | US-2, US-3 | Сценарій 2 |
+| **REQ-5** (Втрата книги) | *Не покрито* | *Не покрито* | *Не покрито* |
