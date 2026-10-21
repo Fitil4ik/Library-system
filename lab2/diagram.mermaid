@@ -1,0 +1,35 @@
+flowchart LR
+    %% Актори
+    Reader((Читач <br> людина))
+    PaymentGateway[[Платіжний шлюз <br> зовнішня система]]
+    EmailService[[Сервіс розсилок <br> зовнішня система]]
+
+    %% Прецеденти
+    UC_Search([Пошук книги])
+    UC_SearchTitle([Пошук за назвою])
+    UC_SearchAuthor([Пошук за автором])
+    UC_Borrow([Видача книги])
+    UC_CheckStatus([Перевірка статусу книги])
+    UC_Return([Повернення книги])
+    UC_PayFine([Оплата штрафу])
+    UC_Notify([Відправка сповіщення])
+
+    %% Зв'язки акторів з прецедентами
+    Reader --- UC_Search
+    Reader --- UC_Borrow
+    Reader --- UC_Return
+
+    UC_PayFine --- PaymentGateway
+    UC_Notify --- EmailService
+
+    %% Узагальнення (Generalization)
+    UC_SearchTitle -. generalization .-> UC_Search
+    UC_SearchAuthor -. generalization .-> UC_Search
+
+    %% Include (Включення)
+    UC_Borrow -. include .-> UC_CheckStatus
+    UC_Borrow -. include .-> UC_Notify
+    UC_Return -. include .-> UC_Notify
+
+    %% Extend (Розширення)
+    UC_PayFine -. extend .-> UC_Return
