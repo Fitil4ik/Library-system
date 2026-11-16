@@ -1,6 +1,6 @@
 # Use Case діаграма (Library-system)
 
-Нижче наведено діаграму прецедентів у нотації Mermaid, що відображає взаємодію акторів (`Reader`, `PaymentGateway`, `EmailService`) із функціоналом системи управління бібліотекою, включаючи зв'язки `<<include>>`, `<<extend>>` та узагальнення (generalization).
+Нижче наведено оновлену діаграму прецедентів у нотації Mermaid, що відображає взаємодію акторів (`Reader`, `PaymentGateway`, `EmailService`) із функціоналом системи управління бібліотекою. Узагальнення (generalization) позначено суцільними стрілками (`-->`), а залежності `<<include>>` та `<<extend>>` — пунктирними (`-.->`).
 
 ```mermaid
 flowchart LR
@@ -27,15 +27,15 @@ flowchart LR
         UC_SendNotification(["UC_SendNotification<br/>Відправка сповіщення"])
         UC_PayFine(["UC_PayFine<br/>Оплата штрафу"])
 
-        %% Зв'язки узагальнення (Generalization)
-        UC_SearchByTitle -.->|generalization| UC_Search
-        UC_SearchByAuthor -.->|generalization| UC_Search
+        %% Зв'язки узагальнення (Generalization — суцільні стрілки)
+        UC_SearchByTitle -->|generalization| UC_Search
+        UC_SearchByAuthor -->|generalization| UC_Search
 
-        %% Зв'язки <<include>>
+        %% Зв'язки <<include>> (пунктирні стрілки)
         UC_Return -.->|«include»| UC_CheckLoanStatus
         UC_Return -.->|«include»| UC_SendNotification
 
-        %% Зв'язки <<extend>>
+        %% Зв'язки <<extend>> (пунктирні стрілки)
         UC_PayFine -.->|«extend»<br/>[прострочення або втрата]| UC_Return
     end
 
