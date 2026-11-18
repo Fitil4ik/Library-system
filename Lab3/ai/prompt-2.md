@@ -1,4 +1,4 @@
-# Промт 1
+# Промт 2
 
 Перегенеруй файл diagrams.md на основі оновленого файлу spec.md, було додано уточнені критерії прийняття (4-7), яких потрібно суворо дотриматися:
 1. У Сценаріях 1 і 2 заміни виклики processTimelyReturn(loanId) та processOverdueReturn(loanId) на єдиний спільний метод LoanService.processReturn(loanId), оскільки ReturnController не знає про наявність прострочення до звернення в БД (пункт 4 spec.md).

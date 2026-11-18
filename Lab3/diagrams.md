@@ -3,6 +3,7 @@
 Документ описує внутрішню взаємодію компонентів системи управління бібліотекою та зовнішніх сервісів для трьох сценаріїв повернення книги (`UC_Return`), включно з перевіркою статусу позики (`UC_CheckLoanStatus`), оплатою штрафів/компенсацій (`UC_PayFine`) та надсиланням сповіщень (`UC_SendNotification`).
 
 ## Учасники взаємодії
+
 1. `Reader` — зовнішній актор (читач), який ініціює повернення книги або повідомляє про її втрату.
 2. `ReturnController` — контролер вхідних запитів від клієнтського інтерфейсу.
 3. `LoanService` — сервіс бізнес-логіки перевірки термінів, нарахування штрафів, координації оплат та закриття позик.
@@ -12,11 +13,9 @@
 7. `PaymentGateway` — зовнішній платіжний шлюз для проведення транзакцій.
 8. `EmailService` — зовнішній поштовий сервіс для відправки підтверджень та квитанцій.
 
----
-
 ## 1. Сценарій 1: Вчасне повернення книги
 
-Читач повертає книгу до або в день планової дати повернення (`current_date <= Loan.return_date`). Штраф залишається нульовим (`0.00 грн`), книга переводиться у статус `AVAILABLE`, а на електронну пошту читача (за її наявності) надсилається лист-підтвердження.
+Читач ініціює повернення книги, а контролер передає запит у спільний метод `LoanService.processReturn(loanId)`. Після отримання даних позики сервіс перевіряє термін (`current_date <= Loan.return_date`), залишає штраф нульовим (`0.00 грн`), переводить примірник у статус `AVAILABLE` та надсилає лист-підтвердження на електронну пошту читача (за її наявності).
 
 ```mermaid
 sequenceDiagram
@@ -33,7 +32,7 @@ sequenceDiagram
     Reader->>ReturnController: initiateReturn(loanId)
     activate ReturnController
 
-    ReturnController->>LoanService: processTimelyReturn(loanId)
+    ReturnController->>LoanService: processReturn(loanId)
     activate LoanService
 
     LoanService->>LoanRepository: getActiveLoan(loanId)
@@ -41,7 +40,7 @@ sequenceDiagram
     LoanRepository-->>LoanService: loan
     deactivate LoanRepository
 
-    alt Термін повернення дотримано [current_date <= Loan.return_date]
+    alt Термін повернення дотримано: current_date <= Loan.return_date
         LoanService->>LoanService: setFineAmount(loan, 0.00)
         activate LoanService
         LoanService-->>LoanService: fineAmount = 0.00
@@ -52,17 +51,17 @@ sequenceDiagram
         LoanRepository-->>LoanService: closedLoan
         deactivate LoanRepository
 
-        LoanService->>BookRepository: updateBookStatus(loan.bookId, AVAILABLE)
+        LoanService->>BookRepository: updateBookStatus(loan.book_id, AVAILABLE)
         activate BookRepository
         BookRepository-->>LoanService: updatedBook
         deactivate BookRepository
 
-        LoanService->>ReaderRepository: getReaderEmail(loan.readerId)
+        LoanService->>ReaderRepository: getReaderEmail(loan.reader_id)
         activate ReaderRepository
         ReaderRepository-->>LoanService: readerEmail
         deactivate ReaderRepository
 
-        opt Адресу електронної пошти знайдено [readerEmail != null]
+        opt Адресу електронної пошти знайдено: readerEmail != null
             LoanService->>EmailService: sendConfirmation(readerEmail, returnConfirmationPayload)
             activate EmailService
             EmailService-->>LoanService: deliveryStatus (SENT)
@@ -70,7 +69,7 @@ sequenceDiagram
         end
 
         LoanService-->>ReturnController: ReturnResult(SUCCESS, fineAmount=0.00)
-    else Позику не знайдено або термін прострочено [current_date > Loan.return_date]
+    else Позику не знайдено або термін прострочено: current_date > Loan.return_date
         LoanService-->>ReturnController: ReturnResult(INVALID_OR_OVERDUE, loanId)
     end
 
@@ -79,11 +78,9 @@ sequenceDiagram
     deactivate ReturnController
 ```
 
----
-
 ## 2. Сценарій 2: Повернення книги з простроченням та оплатою штрафу
 
-При виявленні прострочення (`current_date > Loan.return_date`) система обчислює пеню (`10.00 грн * overdue_days`), зберігає її в `Loan.fine_amount` та виконує прямий виклик оплати до `PaymentGateway` із механізмом повторних спроб при таймауті (до 3 спроб). Лише після успішного підтвердження платежу позика закривається, а книга повертається в статус `AVAILABLE`.
+Контролер викликає спільний метод `LoanService.processReturn(loanId)`. Виявивши прострочення (`current_date > Loan.return_date`), сервіс обчислює пеню (`10.00 грн * overdue_days`), зберігає її в `Loan.fine_amount` та здійснює прямий запит на оплату до `PaymentGateway` із циклом повторних спроб при таймауті (до 3 спроб). Після підтвердження платежу позика закривається, книга повертається в статус `AVAILABLE`, а на пошту читача (за наявності `Reader.email`) надсилається квитанція.
 
 ```mermaid
 sequenceDiagram
@@ -100,7 +97,7 @@ sequenceDiagram
     Reader->>ReturnController: initiateReturn(loanId)
     activate ReturnController
 
-    ReturnController->>LoanService: processOverdueReturn(loanId)
+    ReturnController->>LoanService: processReturn(loanId)
     activate LoanService
 
     LoanService->>LoanRepository: getActiveLoan(loanId)
@@ -118,36 +115,38 @@ sequenceDiagram
     LoanRepository-->>LoanService: loanWithFine
     deactivate LoanRepository
 
-    loop Повтор запиту при таймауті [attempt <= 3 && paymentStatus == TIMEOUT]
+    loop Спроба оплати через шлюз: до 3 спроб при таймауті
         LoanService->>PaymentGateway: processPayment(loanId, fineAmount)
         activate PaymentGateway
         PaymentGateway-->>LoanService: paymentResponse (CONFIRMED | DECLINED | TIMEOUT)
         deactivate PaymentGateway
     end
 
-    alt Оплату підтверджено [paymentResponse.status == CONFIRMED]
+    alt Оплату підтверджено: paymentResponse.status == CONFIRMED
         LoanService->>LoanRepository: closeLoan(loanId, currentDate, fineAmount)
         activate LoanRepository
         LoanRepository-->>LoanService: closedLoan
         deactivate LoanRepository
 
-        LoanService->>BookRepository: updateBookStatus(loan.bookId, AVAILABLE)
+        LoanService->>BookRepository: updateBookStatus(loan.book_id, AVAILABLE)
         activate BookRepository
         BookRepository-->>LoanService: updatedBook
         deactivate BookRepository
 
-        LoanService->>ReaderRepository: getReaderEmail(loan.readerId)
+        LoanService->>ReaderRepository: getReaderEmail(loan.reader_id)
         activate ReaderRepository
         ReaderRepository-->>LoanService: readerEmail
         deactivate ReaderRepository
 
-        LoanService->>EmailService: sendConfirmation(readerEmail, fineReceiptPayload)
-        activate EmailService
-        EmailService-->>LoanService: deliveryStatus (SENT)
-        deactivate EmailService
+        opt Адресу електронної пошти знайдено: readerEmail != null
+            LoanService->>EmailService: sendConfirmation(readerEmail, fineReceiptPayload)
+            activate EmailService
+            EmailService-->>LoanService: deliveryStatus (SENT)
+            deactivate EmailService
+        end
 
         LoanService-->>ReturnController: ReturnResult(SUCCESS, fineAmount, paymentResponse.transactionId)
-    else Оплату відхилено або вичерпано 3 спроби [DECLINED | TIMEOUT]
+    else Оплату відхилено або вичерпано ліміт спроб: DECLINED | TIMEOUT
         LoanService-->>ReturnController: ReturnResult(PAYMENT_FAILED, fineAmount)
     end
 
@@ -156,11 +155,9 @@ sequenceDiagram
     deactivate ReturnController
 ```
 
----
-
 ## 3. Сценарій 3: Повідомлення про втрату книги з компенсацією
 
-Читач повідомляє про втрату книги (`reportLostBook(loanId)`). Система негайно змінює статус примірника на `LOST` та фіксує компенсаційний штраф у розмірі `500.00 грн` (перекриваючи можливу пеню за прострочення). Після проведення оплати через `PaymentGateway` система фіксує дату закриття позики (залишаючи `Book.status = LOST`) та надсилає підтвердження на `Reader.email`.
+Читач повідомляє про втрату книги (`reportLostBook(loanId)`). Система негайно переводить примірник у статус `LOST`, розраховує фіксовану компенсацію `500.00 грн` (перекриваючи можливу пеню за прострочення) та зберігає її в `Loan.fine_amount`. Після проведення оплати через `PaymentGateway` позика закривається (книга залишається у статусі `LOST`), а підтвердження надсилається на `Reader.email` за наявності адреси.
 
 ```mermaid
 sequenceDiagram
@@ -185,39 +182,46 @@ sequenceDiagram
     LoanRepository-->>LoanService: loan
     deactivate LoanRepository
 
-    LoanService->>BookRepository: updateBookStatus(loan.bookId, LOST)
+    LoanService->>BookRepository: updateBookStatus(loan.book_id, LOST)
     activate BookRepository
     BookRepository-->>LoanService: lostBook
     deactivate BookRepository
 
-    LoanService->>LoanRepository: setFixedLostFine(loanId, 500.00)
+    LoanService->>LoanService: calculateLostBookFine(loan)
+    activate LoanService
+    LoanService-->>LoanService: fineAmount = 500.00
+    deactivate LoanService
+
+    LoanService->>LoanRepository: saveCalculatedFine(loanId, fineAmount)
     activate LoanRepository
     LoanRepository-->>LoanService: loanWithCompensation
     deactivate LoanRepository
 
-    LoanService->>PaymentGateway: processPayment(loanId, 500.00)
+    LoanService->>PaymentGateway: processPayment(loanId, fineAmount)
     activate PaymentGateway
     PaymentGateway-->>LoanService: paymentResponse (CONFIRMED | DECLINED)
     deactivate PaymentGateway
 
-    alt Оплату компенсації підтверджено [paymentResponse.status == CONFIRMED]
-        LoanService->>LoanRepository: closeLoan(loanId, currentDate, 500.00)
+    alt Оплату компенсації підтверджено: paymentResponse.status == CONFIRMED
+        LoanService->>LoanRepository: closeLoan(loanId, currentDate, fineAmount)
         activate LoanRepository
         LoanRepository-->>LoanService: closedLoan
         deactivate LoanRepository
 
-        LoanService->>ReaderRepository: getReaderEmail(loan.readerId)
+        LoanService->>ReaderRepository: getReaderEmail(loan.reader_id)
         activate ReaderRepository
         ReaderRepository-->>LoanService: readerEmail
         deactivate ReaderRepository
 
-        LoanService->>EmailService: sendConfirmation(readerEmail, lostBookReceiptPayload)
-        activate EmailService
-        EmailService-->>LoanService: deliveryStatus (SENT)
-        deactivate EmailService
+        opt Адресу електронної пошти знайдено: readerEmail != null
+            LoanService->>EmailService: sendConfirmation(readerEmail, lostBookReceiptPayload)
+            activate EmailService
+            EmailService-->>LoanService: deliveryStatus (SENT)
+            deactivate EmailService
+        end
 
         LoanService-->>ReturnController: LostBookResult(CLOSED, compensation=500.00, bookStatus=LOST)
-    else Оплату компенсації відхилено [paymentResponse.status == DECLINED]
+    else Оплату компенсації відхилено: paymentResponse.status == DECLINED
         LoanService-->>ReturnController: LostBookResult(PAYMENT_PENDING, unpaidFine=500.00, bookStatus=LOST)
     end
 
